@@ -1,9 +1,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Utils = require(ReplicatedStorage.Utils)
+local Types = require(script.Types)
 
-local _require = {}
 local requireMeta = {}
+local _require = setmetatable({}, requireMeta)
 
 
 function requireMeta:__tostring(): string
@@ -11,7 +12,7 @@ function requireMeta:__tostring(): string
 end
 
 
-local function containsDuplicate(container: Array<Instance | string>): boolean
+local function containsDuplicate(container: Types.Array<Instance | string>): boolean
     local total = #container
 
     for index, value in ipairs(container) do
@@ -31,7 +32,7 @@ local function maybeThrow(message: string, condition: boolean, ...: any): nil
 
     local formatted = string.format(message, ...)
 
-    maybeThrow(formatted)
+    error(formatted)
 end
 
 
@@ -111,4 +112,19 @@ function requireMeta:__call(...: Instance | string): ...{any} | ((...any) -> any
 end
 
 
-return setmetatable(_require, requireMeta)
+function _require.monkeyPatch(level)
+    level = level or 2
+
+    local env = getfenv(level)
+          env.require = _require
+
+    setfenv(level, env)
+end
+
+
+return function(ranThroughSideEffect)
+    local level = if ranThroughSideEffect then 2 else 3
+
+    _require.monkeyPatch(level)
+end
+
