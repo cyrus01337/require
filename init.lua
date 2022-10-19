@@ -1,6 +1,6 @@
+--!nolint LocalShadow
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Utils = require(ReplicatedStorage.Utils)
 local Types = require(script.Types)
 
 local requireMeta = {}
@@ -51,9 +51,10 @@ local function findFirstModule(name: string, from: Instance, path: string): Inst
 end
 
 
-local function processPath(path: Instance | string, moduleDirectory: Instance): (Instance, Array<string?>)
+local function processPath(path: Instance | string, moduleDirectory: Instance): (Instance, Types.Array<string?>)
     local instance, routes;
     local parent = moduleDirectory
+    local path: string = if typeof(path) == "string" then path else path:GetFullName()
     local partitions = path:split("/")
     local totalPartitions = #partitions
 
@@ -112,8 +113,8 @@ function requireMeta:__call(...: Instance | string): ...{any} | ((...any) -> any
 end
 
 
-function _require.monkeyPatch(level)
-    level = level or 2
+function _require.monkeyPatch(level: number?)
+    local level = level or 2
 
     local env = getfenv(level)
           env.require = _require
@@ -122,7 +123,7 @@ function _require.monkeyPatch(level)
 end
 
 
-return function(ranThroughSideEffect)
+return function(ranThroughSideEffect: boolean?)
     local level = if ranThroughSideEffect then 2 else 3
 
     _require.monkeyPatch(level)
