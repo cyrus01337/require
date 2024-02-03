@@ -1,7 +1,7 @@
 --!nolint LocalShadow
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Types = require(script.Types)
+local Types = require(script.Utils.Types)
 
 local requireMeta = {}
 
