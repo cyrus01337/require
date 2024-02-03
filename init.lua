@@ -48,7 +48,7 @@ local function processPath(path: Instance | string, moduleDirectory: Instance): 
 	local partitions = path:split("/")
 	local totalPartitions = #partitions
 
-	for i, partition in ipairs(partitions) do
+	for i, partition in partitions do
 		if i < totalPartitions then
 			parent = findFirstModule(partition, parent, path)
 		else
@@ -62,33 +62,39 @@ local function processPath(path: Instance | string, moduleDirectory: Instance): 
 end
 
 type Require = (...Instance | string) -> ...{ any } | ((...any) -> any) | nil
+type Props = {
+	AllowDuplicates: boolean,
+	Directory: Instance,
+}
 
-function requireMeta:__call(...: Instance | string): ...{ any } | ((...any) -> any) | nil
-	local paths = { ... }
-	local options = paths[#paths]
-	local allowDuplicates = false
-	local moduleDirectory = ReplicatedStorage
+local DEFAULT_PROPS: Props = {
+	AllowDuplicates = false,
+	Directory = ReplicatedStorage,
+}
+
+function requireMeta:__call(...: Instance | string | Props): ...{ any } | ((...any) -> any) | nil
+	local paths = ({ ... } :: any) :: Types.Array<Instance | string>
+	local options: Props = paths[#paths]
 	local modules = {}
 
-	maybeThrow("expected 1 or more modules, got 0", #paths == 0)
-
-	if options and typeof(options) == "table" then
-		allowDuplicates = options.AllowDuplicates or allowDuplicates
-		moduleDirectory = options.Directory or moduleDirectory
-
+	if typeof(options) == "table" then
 		table.remove(paths, #paths)
+	else
+		options = DEFAULT_PROPS
 	end
 
-	maybeThrow("cannot import duplicate modules", not allowDuplicates and containsDuplicate(paths))
+	maybeThrow("expected 1 or more modules, got 0", #paths == 0)
+	maybeThrow("cannot import duplicate modules", not options.AllowDuplicates and containsDuplicate(paths))
 
-	for _, path in ipairs(paths) do
+	for _, path in paths do
 		local instance = path
 		local routes = {}
 
 		maybeThrow("cannot import nil", path == nil)
 
 		if typeof(path) == "string" then
-			instance, routes = processPath(path, moduleDirectory)
+			instance, routes = processPath(path, options.Directory)
+			print(path, instance, routes)
 		end
 
 		local module = require(instance)
