@@ -12,7 +12,7 @@ end
 local function containsDuplicate(container: Types.Array<Instance | string>): boolean
 	local total = #container
 
-	for index, value in ipairs(container) do
+	for index, value in container do
 		for innerIndex = index + 1, total do
 			if value == container[innerIndex] then
 				return true
@@ -41,14 +41,14 @@ local function findFirstModule(name: string, from: Instance, path: string): Inst
 	return instance
 end
 
-local function processPath(path: Instance | string, moduleDirectory: Instance): (Instance, Types.Array<string?>)
+local function processPath(path: Instance | string, moduleDirectory: Instance): (Instance, Types.Array<string>)
 	local instance, routes
 	local parent = moduleDirectory
 	local path: string = if typeof(path) == "string" then path else path:GetFullName()
 	local partitions = path:split("/")
 	local totalPartitions = #partitions
 
-	for i, partition in ipairs(partitions) do
+	for i, partition in partitions do
 		if i < totalPartitions then
 			parent = findFirstModule(partition, parent, path)
 		else
@@ -61,39 +61,58 @@ local function processPath(path: Instance | string, moduleDirectory: Instance): 
 	return instance, routes
 end
 
-type Require = (...Instance | string) -> ...{ any } | ((...any) -> any) | nil
+type Props = {
+	AllowDuplicates: boolean?,
+	Directory: Instance?,
+}
 
-function requireMeta:__call(...: Instance | string): ...{ any } | ((...any) -> any) | nil
-	local paths = { ... }
-	local options = paths[#paths]
-	local allowDuplicates = false
-	local moduleDirectory = ReplicatedStorage
+local DEFAULT_PROPS: Props = {
+	AllowDuplicates = false,
+	Directory = ReplicatedStorage,
+}
+
+local function processParameters(args: { Instance | string | Props }): ({ Instance | string }, Props)
+	local props = args[#args]
+
+	if typeof(props) ~= "table" then
+		return args :: { Instance | string }, DEFAULT_PROPS
+	end
+
+	for property: string, defaultValue in DEFAULT_PROPS :: { [string]: any } do
+		if props[property] == nil then
+			props[property] = defaultValue
+		end
+	end
+
+	table.remove(args, #args)
+
+	return args :: { Instance | string }, props
+end
+
+type Require = (...Instance | string | Props) -> ...{ any } | ((...any) -> any) | nil
+
+function requireMeta:__call(...: Instance | string | Props): ...{ any } | ((...any) -> any) | nil
+	local paths, props = processParameters({ ... })
 	local modules = {}
 
 	maybeThrow("expected 1 or more modules, got 0", #paths == 0)
+	maybeThrow("cannot import duplicate modules", not props.AllowDuplicates and containsDuplicate(paths))
 
-	if options and typeof(options) == "table" then
-		allowDuplicates = options.AllowDuplicates or allowDuplicates
-		moduleDirectory = options.Directory or moduleDirectory
-
-		table.remove(paths, #paths)
-	end
-
-	maybeThrow("cannot import duplicate modules", not allowDuplicates and containsDuplicate(paths))
-
-	for _, path in ipairs(paths) do
-		local instance = path
-		local routes = {}
+	for _, path in paths do
+		local routes: Types.Array<string> = {}
 
 		maybeThrow("cannot import nil", path == nil)
 
 		if typeof(path) == "string" then
-			instance, routes = processPath(path, moduleDirectory)
+			path, routes = processPath(path, props.Directory)
 		end
 
-		local module = require(instance)
+		local module = require(path)
 
-		for _, route in ipairs(routes) do
+		for _, route in routes do
+			local submodule = module[route]
+
+			maybeThrow("cannot import %s from %s", submodule == nil, route, tostring(path))
 			module = module[route]
 		end
 
@@ -103,4 +122,13 @@ function requireMeta:__call(...: Instance | string): ...{ any } | ((...any) -> a
 	return table.unpack(modules)
 end
 
-return (setmetatable({}, requireMeta) :: any) :: Require
+local function unsafeForceCast<T, O>(value: T): O
+	return (value :: any) :: O
+end
+
+-- for this to act like a function without being one and benefit from the custom
+-- repr that __tostring provides, ive masked the type to effectively be the same
+-- function type signature as __call
+local newRequire: Require = unsafeForceCast(setmetatable({}, requireMeta))
+
+return newRequire
