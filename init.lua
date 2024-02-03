@@ -61,16 +61,9 @@ local function processPath(path: Instance | string, moduleDirectory: Instance): 
 	return instance, routes
 end
 
-<<<<<<< HEAD
 type Props = {
 	AllowDuplicates: boolean?,
 	Directory: Instance?,
-=======
-type Require = (...Instance | string) -> ...{ any } | ((...any) -> any) | nil
-type Props = {
-	AllowDuplicates: boolean,
-	Directory: Instance,
->>>>>>> 0663a1b5bd9752c3dab4ade592e7c001a992c256
 }
 
 local DEFAULT_PROPS: Props = {
@@ -78,7 +71,6 @@ local DEFAULT_PROPS: Props = {
 	Directory = ReplicatedStorage,
 }
 
-<<<<<<< HEAD
 local function processParameters(args: { Instance | string | Props }): ({ Instance | string }, Props)
 	local props = args[#args]
 
@@ -108,35 +100,11 @@ function requireMeta:__call(...: Instance | string | Props): ...{ any } | ((...a
 
 	for _, path in paths do
 		local routes: Types.Array<string> = {}
-=======
-function requireMeta:__call(...: Instance | string | Props): ...{ any } | ((...any) -> any) | nil
-	local paths = ({ ... } :: any) :: Types.Array<Instance | string>
-	local options: Props = paths[#paths]
-	local modules = {}
-
-	if typeof(options) == "table" then
-		table.remove(paths, #paths)
-	else
-		options = DEFAULT_PROPS
-	end
-
-	maybeThrow("expected 1 or more modules, got 0", #paths == 0)
-	maybeThrow("cannot import duplicate modules", not options.AllowDuplicates and containsDuplicate(paths))
-
-	for _, path in paths do
-		local instance = path
-		local routes = {}
->>>>>>> 0663a1b5bd9752c3dab4ade592e7c001a992c256
 
 		maybeThrow("cannot import nil", path == nil)
 
 		if typeof(path) == "string" then
-<<<<<<< HEAD
 			path, routes = processPath(path, props.Directory)
-=======
-			instance, routes = processPath(path, options.Directory)
-			print(path, instance, routes)
->>>>>>> 0663a1b5bd9752c3dab4ade592e7c001a992c256
 		end
 
 		local module = require(path)
