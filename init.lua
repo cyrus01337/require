@@ -4,7 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Types = require(script.Types)
 
 local requireMeta = {}
-local require_ = setmetatable({}, requireMeta)
 
 function requireMeta:__tostring(): string
 	return "function: require"
@@ -62,6 +61,8 @@ local function processPath(path: Instance | string, moduleDirectory: Instance): 
 	return instance, routes
 end
 
+type Require = (...Instance | string) -> ...{ any } | ((...any) -> any) | nil
+
 function requireMeta:__call(...: Instance | string): ...{ any } | ((...any) -> any) | nil
 	local paths = { ... }
 	local options = paths[#paths]
@@ -102,17 +103,4 @@ function requireMeta:__call(...: Instance | string): ...{ any } | ((...any) -> a
 	return table.unpack(modules)
 end
 
-function require_.monkeyPatch(level: number?)
-	local level = level or 2
-
-	local env = getfenv(level)
-	env.require = require_
-
-	setfenv(level, env)
-end
-
-return function(ranThroughSideEffect: boolean?)
-	local level = if ranThroughSideEffect then 2 else 3
-
-	require_.monkeyPatch(level)
-end
+return (setmetatable({}, requireMeta) :: any) :: Require
